@@ -1,21 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import SendingTimeline from '../components/SendingTimeline'
 import { TronUtilsWrapperType } from '../components/TronUtilsWrapper'
 
-const DynamicTronUtils = dynamic<React.ComponentType<{}>>(
-  () => import('../components/TronUtilsWrapper'),
-  { ssr: false }
-)
-
-export default function SendingPage() {
+function SendingPageContent() {
   const searchParams = useSearchParams()
   const [currentPhase, setCurrentPhase] = useState(0)
   const [newWalletAddress, setNewWalletAddress] = useState('')
   const [newWalletPrivateKey, setNewWalletPrivateKey] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const email = searchParams?.get('email') ?? ''
   const amount = searchParams?.get('amount') ?? ''
@@ -23,40 +19,54 @@ export default function SendingPage() {
 
   console.log('SendingPage initialized with params:', { email, amount, token })
 
-  useEffect(() => {
-    const processSending = async () => {
-      if (!email || !amount || !token) {
-        console.error('Missing required parameters')
+  const processingRef = useRef(false);
+
+  const processSending = useCallback(async () => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+
+    if (!email || !amount || !token) {
+      setError('Missing required parameters')
+      processingRef.current = false;
+      return
+    }
+
+    try {
+      console.log('Starting sending process...')
+      setCurrentPhase(1)
+
+      const utils = await import('../components/TronUtilsWrapper').then(mod => mod.default) as TronUtilsWrapperType
+
+      // Phase 1: Create new wallet
+      console.log('Phase 1: Creating new wallet')
+      const { address, privateKey } = await utils.createNewWallet()
+      setNewWalletAddress(address)
+      setNewWalletPrivateKey(privateKey)
+      console.log('New wallet created:', { address, privateKey })
+
+      // Phase 2: Initiate transaction
+      setCurrentPhase(2)
+      console.log('Phase 2: Initiating transaction')
+      try {
+        const txId = await utils.initiateTronTransaction(token, amount, address)
+        console.log('Transaction initiated:', txId)
+      } catch (txError) {
+        console.error('Error initiating transaction:', txError)
+        setError(`Failed to initiate transaction: ${txError instanceof Error ? txError.message : 'Unknown error'}`)
+        setCurrentPhase(0)
+        processingRef.current = false;
         return
       }
 
+      // Phase 3: TronLink confirmation (handled by TronLink)
+      setCurrentPhase(3)
+      console.log('Phase 3: Waiting for TronLink confirmation')
+      // Wait for transaction confirmation (you may need to implement a polling mechanism here)
+
+      // Phase 4: Send confirmation email
+      setCurrentPhase(4)
+      console.log('Phase 4: Sending confirmation email')
       try {
-        console.log('Starting sending process...')
-
-        const utils = await import('../components/TronUtilsWrapper').then(mod => mod.default) as TronUtilsWrapperType
-
-        // Phase 1: Create new wallet
-        setCurrentPhase(1)
-        console.log('Phase 1: Creating new wallet')
-        const { address, privateKey } = await utils.createNewWallet()
-        setNewWalletAddress(address)
-        setNewWalletPrivateKey(privateKey)
-        console.log('New wallet created:', address)
-
-        // Phase 2: Initiate transaction
-        setCurrentPhase(2)
-        console.log('Phase 2: Initiating transaction')
-        const txId = await utils.initiateTronTransaction(token, amount, address)
-        console.log('Transaction initiated:', txId)
-
-        // Phase 3: TronLink confirmation (handled by TronLink)
-        setCurrentPhase(3)
-        console.log('Phase 3: Waiting for TronLink confirmation')
-        // Wait for transaction confirmation (you may need to implement a polling mechanism here)
-
-        // Phase 4: Send confirmation email
-        setCurrentPhase(4)
-        console.log('Phase 4: Sending confirmation email')
         const response = await fetch('/api/send-email', {
           method: 'POST',
           headers: {
@@ -71,22 +81,43 @@ export default function SendingPage() {
           }),
         })
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(`Failed to send email: ${errorData.message}`)
+          throw new Error(`Failed to send email: ${await response.text()}`)
         }
         console.log('Confirmation email sent')
-
-        // Complete
-        setCurrentPhase(5)
-        console.log('Sending process completed successfully')
-      } catch (error) {
-        console.error('Error during sending process:', error)
-        // Handle error state
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError)
+        setError(`Failed to send confirmation email: ${emailError instanceof Error ? emailError.message : 'Unknown error'}`)
+        setCurrentPhase(0)
+        processingRef.current = false;
+        return
       }
-    }
 
-    processSending()
+      // Complete
+      setCurrentPhase(5)
+      console.log('Sending process completed successfully')
+    } catch (error) {
+      console.error('Error during sending process:', error)
+      setError(error instanceof Error ? error.message : 'An unknown error occurred')
+      setCurrentPhase(0)
+    } finally {
+      processingRef.current = false;
+    }
   }, [email, amount, token])
+
+  useEffect(() => {
+    processSending()
+  }, [processSending])
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-3xl font-extrabold text-gray-900 text-center mb-8">Error</h1>
+          <p className="text-red-600 text-center">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 py-12 px-4 sm:px-6 lg:px-8">
@@ -102,4 +133,8 @@ export default function SendingPage() {
       </div>
     </div>
   )
+}
+
+export default function SendingPage() {
+  return <SendingPageContent />
 }

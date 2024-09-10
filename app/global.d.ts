@@ -1,3 +1,5 @@
-interface Window {
-    tronWeb: any;
-  }
+declare global {
+    interface Window {
+        tronWeb: unknown;
+    }
+}

@@ -1,15 +1,25 @@
-import { Html, Head, Main, NextScript } from 'next/document'
+import Document, { Html, Head, Main, NextScript } from 'next/document'
+import Script from 'next/script'
 
-export default function Document() {
-  return (
-    <Html>
-      <Head>
-        <script src="https://cdn.jsdelivr.net/npm/tronweb@5.1.0/dist/TronWeb.js"></script>
-      </Head>
-      <body>
-        <Main />
-        <NextScript />
-      </body>
-    </Html>
-  )
+class MyDocument extends Document {
+  render() {
+    return (
+      <Html>
+        <Head>
+          {/* Add any head elements here */}
+        </Head>
+        <body>
+          <Main />
+          <NextScript />
+          {/* Replace your synchronous script with this */}
+          <Script
+            src="/path/to/your/script.js"
+            strategy="afterInteractive"
+          />
+        </body>
+      </Html>
+    )
+  }
 }
+
+export default MyDocument

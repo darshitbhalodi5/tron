@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { TronWeb } from '../tronweb'
 
 export function useWallet() {
-  const [tronWeb, setTronWeb] = useState<any>(null)
+  const [tronWeb, setTronWeb] = useState<TronWeb | null>(null)
   const [address, setAddress] = useState<string | null>(null)
 
   useEffect(() => {
@@ -13,7 +14,7 @@ export function useWallet() {
     }
 
     checkTronLink()
-    window.addEventListener('message', (e) => {
+    window.addEventListener('message', (e: MessageEvent) => {
       if (e.data.message && e.data.message.action === 'setAccount') {
         checkTronLink()
       }
@@ -34,5 +35,10 @@ export function useWallet() {
     }
   }
 
-  return { tronWeb, address, connectWallet }
+  const sendTransaction = useCallback(async (/* ... params ... */) => {
+    console.log('sendTransaction called');
+    // ... existing transaction logic ...
+  }, [/* ... dependencies ... */]);
+
+  return { tronWeb, address, connectWallet, sendTransaction }
 }

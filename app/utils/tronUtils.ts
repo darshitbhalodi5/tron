@@ -1,14 +1,14 @@
-import nodemailer from 'nodemailer'
+import { TronWeb } from '../tronweb'
 
-let tronWeb: any
+let tronWeb: TronWeb | undefined
 
 if (typeof window !== 'undefined') {
-  tronWeb = (window as any).tronWeb
+  tronWeb = (window as Window & { tronWeb?: TronWeb }).tronWeb
 }
 
 console.log('TronWeb initialized')
 
-export async function createNewWallet() {
+export const createNewWallet = async (): Promise<{ address: string; privateKey: string }> => {
   if (!tronWeb) {
     throw new Error('TronWeb not initialized')
   }
@@ -21,21 +21,20 @@ export async function createNewWallet() {
   }
 }
 
-export async function initiateTronTransaction(tokenAddress: string, amount: string, receiverAddress: string) {
+export const initiateTronTransaction = async (token: string, amount: string, toAddress: string): Promise<string> => {
   if (!tronWeb) {
     throw new Error('TronWeb not initialized')
   }
   console.log('Initiating transaction...')
-  console.log('Token:', tokenAddress, 'Amount:', amount, 'Receiver:', receiverAddress)
+  console.log('Token:', token, 'Amount:', amount, 'Receiver:', toAddress)
   
-  const fromAddress = tronWeb.defaultAddress.base58
-  let transaction
+  let transaction: { txid: string }
 
-  if (tokenAddress === 'TRX') {
-    transaction = await tronWeb.trx.sendTransaction(receiverAddress, tronWeb.toSun(amount))
+  if (token === 'TRX') {
+    transaction = await tronWeb.trx.sendTransaction(toAddress, tronWeb.toSun(amount))
   } else {
-    const contract = await tronWeb.contract().at(tokenAddress)
-    transaction = await contract.transfer(receiverAddress, amount).send()
+    const contract = await tronWeb.contract().at(token)
+    transaction = await contract.transfer(toAddress, amount).send()
   }
 
   console.log('Transaction initiated:', transaction.txid)

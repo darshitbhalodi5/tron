@@ -1,45 +1,46 @@
 import { useState, useEffect } from 'react'
 import { useWallet } from './useWallet'
+import { TronWeb } from '../tronweb'
 
 interface Token {
-  address: string
   symbol: string
-  balance: string
+  name: string
+  decimals: number
+  tokenAddress: string
 }
 
-export function useTokenList() {
-  const [tokens, setTokens] = useState<Token[]>([])
+export function useTokenList(): Token[] {
   const { tronWeb, address } = useWallet()
+  const [tokens, setTokens] = useState<Token[]>([])
 
   useEffect(() => {
     const fetchTokens = async () => {
       if (tronWeb && address) {
         try {
           // Fetch TRC20 token list
-          const tokenList = await tronWeb.trx.getAccount(address)
+          const tokenList = await (tronWeb as TronWeb).trx.getAccount(address)
           const trc20Tokens = tokenList.trc20 || []
 
           const formattedTokens: Token[] = await Promise.all(
-            Object.entries(trc20Tokens).map(async ([contractAddress, balance]) => {
-              const contract = await tronWeb.contract().at(contractAddress)
+            Object.keys(trc20Tokens).map(async (tokenAddress) => {
+              const contract = await (tronWeb as TronWeb).contract().at(tokenAddress)
               const symbol = await contract.symbol().call()
+              const name = await contract.name().call()
+              const decimals = await contract.decimals().call()
+
               return {
-                address: contractAddress,
-                symbol: symbol,
-                balance: tronWeb.fromSun(balance)
+                symbol,
+                name,
+                decimals: parseInt(decimals),
+                tokenAddress,
               }
             })
           )
 
-          // Add TRX balance
-          const trxBalance = await tronWeb.trx.getBalance(address)
-          formattedTokens.unshift({
-            address: 'TRX',
-            symbol: 'TRX',
-            balance: tronWeb.fromSun(trxBalance)
-          })
-
-          setTokens(formattedTokens)
+          setTokens([
+            { symbol: 'TRX', name: 'TRON', decimals: 6, tokenAddress: '' },
+            ...formattedTokens,
+          ])
         } catch (error) {
           console.error('Error fetching token list:', error)
         }
@@ -49,5 +50,5 @@ export function useTokenList() {
     fetchTokens()
   }, [tronWeb, address])
 
-  return { tokens }
+  return tokens
 }

@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { email, address, privateKey, amount, token } = req.body
 
-  let transporter = nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: 'darshitbhalodi@gmail.com',
@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   })
 
-  let mailOptions = {
+  const mailOptions = {
     from: 'darshitbhalodi@gmail.com',
     to: email,
     subject: 'Token Transfer Confirmation',
@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    let info = await transporter.sendMail(mailOptions)
+    const info = await transporter.sendMail(mailOptions)
     console.log('Email sent:', info.messageId)
     res.status(200).json({ message: 'Email sent successfully' })
   } catch (error) {

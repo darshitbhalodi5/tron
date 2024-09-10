@@ -1,81 +1,109 @@
 'use client'
 
 import { useState } from 'react'
-import { useTokenList } from '../hooks/useTokenList'
-import { useWallet } from '../hooks/useWallet'
 import { useRouter } from 'next/navigation'
+import { useWallet } from '../hooks/useWallet'
+import TokenBalance, { useTokenBalance } from './TokenBalance'
 
 export default function SendMoneyForm() {
-  const [recipientEmail, setRecipientEmail] = useState('')
-  const [amount, setAmount] = useState('')
-  const [selectedToken, setSelectedToken] = useState('')
-  const { tokens } = useTokenList()
-  const { address } = useWallet()
-  const router = useRouter()
+	const router = useRouter()
+	const { tronWeb, address } = useWallet()
+	const [recipient, setRecipient] = useState('')
+	const [amount, setAmount] = useState('')
+	const [selectedToken, setSelectedToken] = useState('')
+	const { tokensWithBalance } = useTokenBalance()
+	const [emailError, setEmailError] = useState('')
 
-  console.log('SendMoneyForm rendered with tokens:', tokens)
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault()
+		// Implement your send money logic here
+		
+		// Navigate to the /sending page with query parameters
+		const queryParams = new URLSearchParams({
+			email: recipient,
+			amount: amount,
+			token: selectedToken
+		}).toString()
+		
+		router.push(`/sending?${queryParams}`)
+	}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log('Form submitted:', { recipientEmail, amount, selectedToken })
-    // Redirect to the sending page with form data
-    router.push(`/sending?email=${recipientEmail}&amount=${amount}&token=${selectedToken}`)
-  }
+	const validateEmail = (email: string) => {
+		const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+		return re.test(String(email).toLowerCase())
+	}
 
-  if (!address) {
-    console.log('Wallet not connected')
-    return <p className="text-gray-600 italic">Please connect your wallet to send tokens.</p>
-  }
+	const handleRecipientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const email = e.target.value
+		setRecipient(email)
+		if (email && !validateEmail(email)) {
+			setEmailError('Please enter a valid email address')
+		} else {
+			setEmailError('')
+		}
+	}
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Recipient Email</label>
-        <input
-          type="email"
-          id="email"
-          value={recipientEmail}
-          onChange={(e) => setRecipientEmail(e.target.value)}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black"
-          placeholder="Enter recipient email"
-          required
-        />
-      </div>
-      <div>
-        <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Amount</label>
-        <input
-          type="number"
-          id="amount"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black"
-          placeholder="Enter amount"
-          required
-        />
-      </div>
-      <div>
-        <label htmlFor="token" className="block text-sm font-medium text-gray-700">Select Token</label>
-        <select
-          id="token"
-          value={selectedToken}
-          onChange={(e) => setSelectedToken(e.target.value)}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black"
-          required
-        >
-          <option value="">Select a token</option>
-          {tokens.map((token) => (
-            <option key={token.address} value={token.address}>
-              {token.symbol}
-            </option>
-          ))}
-        </select>
-      </div>
-      <button
-        type="submit"
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-      >
-        Send Token
-      </button>
-    </form>
-  )
+	return (
+		<div>
+			<form onSubmit={handleSubmit} className="space-y-4">
+				<div>
+					<label htmlFor="recipient" className="block text-sm font-medium text-gray-700">
+						Recipient Email
+					</label>
+					<input
+						type="email"
+						id="recipient"
+						value={recipient}
+						onChange={handleRecipientChange}
+						className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+						required
+					/>
+					{emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
+				</div>
+				<div>
+					<label htmlFor="amount" className="block text-sm font-medium text-gray-700">
+						Amount
+					</label>
+					<input
+						type="number"
+						id="amount"
+						value={amount}
+						onChange={(e) => setAmount(e.target.value)}
+						className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+						required
+					/>
+				</div>
+				<div>
+					<label htmlFor="token" className="block text-sm font-medium text-gray-700">
+						Token
+					</label>
+					<select
+						id="token"
+						value={selectedToken}
+						onChange={(e) => setSelectedToken(e.target.value)}
+						className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+						required
+					>
+						<option value="">Select a token</option>
+						{tokensWithBalance && tokensWithBalance.length > 0 ? (
+							tokensWithBalance.map((token) => (
+								<option key={token.tokenAddress} value={token.symbol}>
+									{token.symbol}
+								</option>
+							))
+						) : (
+							<option value="" disabled>Loading tokens...</option>
+						)}
+					</select>
+				</div>
+				<button
+					type="submit"
+					className="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600"
+					disabled={!!emailError || !recipient || !amount || !selectedToken}
+				>
+					Send
+				</button>
+			</form>
+		</div>
+	)
 }

@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer'
 export async function POST(request: Request) {
   const { email, address, privateKey, amount, token } = await request.json()
 
-  let transporter = nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: 'darshitbhalodi@gmail.com',
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     }
   })
 
-  let mailOptions = {
+  const mailOptions = {
     from: 'darshitbhalodi@gmail.com',
     to: email,
     subject: 'Token Transfer Confirmation',
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    let info = await transporter.sendMail(mailOptions)
+    const info = await transporter.sendMail(mailOptions)
     console.log('Email sent:', info.messageId)
     return NextResponse.json({ message: 'Email sent successfully' })
   } catch (error) {

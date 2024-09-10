@@ -1,4 +1,5 @@
 import { CheckCircleIcon, ClockIcon } from '@heroicons/react/24/solid'
+import { useCallback } from 'react'
 
 const phases = [
   { id: 1, name: 'Create New Wallet' },
@@ -8,6 +9,13 @@ const phases = [
 ]
 
 export default function SendingTimeline({ currentPhase }: { currentPhase: number }) {
+  const handleSendClick = useCallback(() => {
+    // Add logging to check if this is called multiple times
+    console.log('handleSendClick called');
+
+    // ... existing send logic ...
+  }, [/* ... dependencies ... */]);
+
   return (
     <div className="flow-root">
       <ul role="list" className="-mb-8">
